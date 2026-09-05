@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './', // <--- DODAJTE SAMO OVO DA NE BUDE BELA STRANICA
   plugins: [react()],
   resolve: {
     alias: {
