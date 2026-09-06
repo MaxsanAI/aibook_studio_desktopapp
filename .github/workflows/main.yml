@@ -3,10 +3,15 @@ name: Build Desktop App
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout code
@@ -20,13 +25,48 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Electron App
-        run: npm run electron:build
+      - name: Build web app
+        run: npm run build
+
+      - name: Build Electron App (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run electron:build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Artifact
+      - name: Build Electron App (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run electron:build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Electron App (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run electron:build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows Artifact
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: aiwritebook-windows-installer
+          name: windows-installer
           path: dist_electron/*.exe
+
+      - name: Upload macOS Artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: |
+            dist_electron/*.dmg
+            dist_electron/*.zip
+
+      - name: Upload Linux Artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installer
+          path: |
+            dist_electron/*.AppImage
+            dist_electron/*.deb

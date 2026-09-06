@@ -181,7 +181,7 @@ const anthropicAdapter: AIProviderAdapter = {
 
 const geminiAdapter: AIProviderAdapter = {
   name: 'Google Gemini',
-  models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'],
+  models: ['gemini-3.7-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
   async generate(request: AIRequest, settings: AISettings): Promise<AIResponse> {
     const { messages, temperature = settings.temperature, maxTokens = settings.maxTokens, signal } = request;
 
@@ -231,7 +231,7 @@ const geminiAdapter: AIProviderAdapter = {
 
 const providers: Record<AIProvider, AIProviderAdapter> = {
   openai: createOpenAIAdapter('https://api.openai.com/v1', 'OpenAI', ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']),
-  openrouter: createOpenAIAdapter('https://openrouter.ai/api/v1', 'OpenRouter', ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-2.0-flash-exp']),
+  openrouter: createOpenAIAdapter('https://openrouter.ai/api/v1', 'OpenRouter', ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-3.7-flash']),
   anthropic: anthropicAdapter,
   gemini: geminiAdapter,
 };
