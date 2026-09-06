@@ -5,7 +5,7 @@ import { formatDate } from '@/utils/factories';
 import { exportProjectFile, importProjectFile } from '@/services/exports';
 import { importManuscript } from '@/services/import';
 import { nanoid } from 'nanoid';
-import { BookOpen, Plus, FileText, Upload, MoreVertical, Trash2, Copy, Download, Edit3, PenLine } from 'lucide-react';
+import { BookOpen, Plus, FileText, Upload, MoreVertical, Trash2, Copy, Download, Edit3, PenLine, Zap } from 'lucide-react';
 import type { Page } from '@/App';
 import type { Book } from '@/types';
 
@@ -131,6 +131,30 @@ export function Dashboard({ onNavigate, toastSuccess, toastError }: {
             </div>
           </div>
         )}
+
+        {/* Bolt invite banner */}
+        <div className="mb-8 overflow-hidden rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 px-6 py-5 text-white shadow-soft-lg">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                <Zap size={24} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-white">Build apps like this one with Bolt</h3>
+                <p className="text-sm text-white/90">AI-powered app builder — create full-stack web apps from a prompt. Try it free.</p>
+              </div>
+            </div>
+            <a
+              href="https://bolt.cello.so/SGMjFQLEpDn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 font-semibold text-accent-600 shadow-sm transition-all hover:bg-surface-50 hover:shadow-md whitespace-nowrap"
+            >
+              <Zap size={18} />
+              Try Bolt Free
+            </a>
+          </div>
+        </div>
 
         {/* Recent Books */}
         <div>

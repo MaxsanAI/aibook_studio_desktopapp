@@ -33,8 +33,8 @@ export function Settings({ toastSuccess, toastError }: { toastSuccess: (m: strin
   const providers: { id: AIProvider; label: string; models: string[] }[] = [
     { id: 'openai', label: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
     { id: 'anthropic', label: 'Anthropic', models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'] },
-    { id: 'gemini', label: 'Google Gemini', models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'] },
-    { id: 'openrouter', label: 'OpenRouter', models: ['auto', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-2.0-flash-exp'] },
+    { id: 'gemini', label: 'Google Gemini', models: ['gemini-3.7-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'] },
+    { id: 'openrouter', label: 'OpenRouter', models: ['auto', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-3.7-flash'] },
   ];
 
   const currentProvider = providers.find((p) => p.id === local.aiSettings.provider)!;

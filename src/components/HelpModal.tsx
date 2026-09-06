@@ -43,6 +43,26 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
             <div><kbd className="rounded bg-white dark:bg-surface-900 px-1.5 py-0.5 text-xs border border-surface-200 dark:border-surface-700">Esc</kbd> Close dialog</div>
           </div>
         </div>
+        <div className="overflow-hidden rounded-lg bg-gradient-to-r from-accent-500 to-accent-600 p-4 text-white">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-white" />
+              <div>
+                <h3 className="text-sm font-semibold text-white">Build apps with Bolt</h3>
+                <p className="text-xs text-white/90">Create full-stack web apps from a prompt. Try it free.</p>
+              </div>
+            </div>
+            <a
+              href="https://bolt.cello.so/SGMjFQLEpDn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-accent-600 shadow-sm transition-all hover:bg-surface-50 whitespace-nowrap"
+            >
+              <Sparkles size={16} />
+              Try Bolt
+            </a>
+          </div>
+        </div>
       </div>
     </Modal>
   );
