@@ -60,8 +60,8 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "aiwritebook",
-      "repo": "ai-write-book"
+      "owner": "MaxsanAi",
+      "repo": "aibook_studio_desktopapp"
     },
     "win": {
       "target": ["nsis"],
