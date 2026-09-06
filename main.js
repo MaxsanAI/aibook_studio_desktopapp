@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { autoUpdater } from 'electron-updater';
 
@@ -19,7 +20,12 @@ function createWindow () {
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
+  const indexPath = path.join(__dirname, 'dist', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    mainWindow.loadFile(indexPath);
+  } else {
+    mainWindow.loadURL('http://localhost:5173');
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -28,8 +34,6 @@ function createWindow () {
 
 // ---------------------------------------------------------------------------
 // Auto-Updater — works on all platforms (Windows, macOS, Linux)
-// electron-updater reads latest.yml / latest-mac.yml / latest-linux.yml
-// from the GitHub Releases attached to the latest published release.
 // ---------------------------------------------------------------------------
 
 autoUpdater.autoDownload = true;
@@ -63,23 +67,24 @@ autoUpdater.on('download-progress', (progressObj) => {
 
 autoUpdater.on('update-downloaded', (info) => {
   sendStatus('downloaded', info);
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Ready',
-    message: 'A new version has been downloaded. Restart the app to apply the update.',
-    buttons: ['Restart Now', 'Later']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
-    }
-  });
+  if (mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'A new version has been downloaded. Restart the app to apply the update.',
+      buttons: ['Restart Now', 'Later']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  }
 });
 
 autoUpdater.on('error', (err) => {
   sendStatus('error', { message: err?.message || String(err) });
 });
 
-// IPC handlers so the renderer can manually check for updates or install
 ipcMain.handle('check-for-updates', async () => {
   try {
     await autoUpdater.checkForUpdates();
@@ -104,11 +109,9 @@ ipcMain.handle('get-app-version', () => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Check for updates after a short delay so the window loads first.
-  // Works in production builds; no-ops in dev (no update channel).
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch(() => {
-      // Silently ignore in dev or when no update channel is configured
+      // Ignoriše se u dev modu kad nema update kanala
     });
   }, 3000);
 
