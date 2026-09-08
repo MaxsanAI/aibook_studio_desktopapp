@@ -1,12 +1,12 @@
+```js
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
-// electron-updater is CommonJS.
-// Since this project uses ESM ("type": "module"),
-// load it safely using Node's createRequire.
+// electron-updater is a CommonJS module.
+// This safely loads it from an ESM project ("type": "module").
 const require = createRequire(import.meta.url);
 const { autoUpdater } = require('electron-updater');
 
@@ -14,6 +14,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow = null;
+
+// ---------------------------------------------------------------------------
+// Window
+// ---------------------------------------------------------------------------
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,21 +32,25 @@ function createWindow() {
 
   const indexPath = path.join(__dirname, 'dist', 'index.html');
 
+  // Production / packaged application
   if (fs.existsSync(indexPath)) {
     mainWindow.loadFile(indexPath);
+  } else if (app.isPackaged) {
+    // Never fall back to localhost in a packaged application.
+    dialog.showErrorBox(
+      'AI Write Book - Application Error',
+      `The application could not start because the production files are missing.
+
+Missing file:
+${indexPath}
+
+Please reinstall the application or install the latest version.`
+    );
+
+    app.quit();
+    return;
   } else {
-    // In a packaged application, never fall back to localhost.
-    if (app.isPackaged) {
-      dialog.showErrorBox(
-        'Application Error',
-        `The application could not start because the production files are missing.\n\nMissing file:\n${indexPath}\n\nPlease reinstall the application.`
-      );
-
-      app.quit();
-      return;
-    }
-
-    // Development mode only.
+    // Development only
     mainWindow.loadURL('http://localhost:5173');
   }
 
@@ -53,8 +61,17 @@ function createWindow() {
 
 // ---------------------------------------------------------------------------
 // Auto-Updater
-// Only enabled for packaged production applications.
+// Only active in packaged production builds.
 // ---------------------------------------------------------------------------
+
+function sendStatus(status, info) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', {
+      status,
+      info
+    });
+  }
+}
 
 if (app.isPackaged) {
   autoUpdater.autoDownload = true;
@@ -76,25 +93,32 @@ if (app.isPackaged) {
     sendStatus('downloading', {
       percent: progressObj.percent,
       transferred: progressObj.transferred,
-      total: progressObj.total,
+      total: progressObj.total
     });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
     sendStatus('downloaded', info);
 
-    if (mainWindow) {
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'Update Ready',
-        message:
-          'A new version has been downloaded. Restart the app to apply the update.',
-        buttons: ['Restart Now', 'Later']
-      }).then((result) => {
-        if (result.response === 0) {
-          autoUpdater.quitAndInstall();
-        }
-      });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog
+        .showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'Update Ready',
+          message:
+            'A new version has been downloaded. Restart the app to apply the update.',
+          buttons: ['Restart Now', 'Later'],
+          defaultId: 0,
+          cancelId: 1
+        })
+        .then((result) => {
+          if (result.response === 0) {
+            autoUpdater.quitAndInstall();
+          }
+        })
+        .catch(() => {
+          // Ignore dialog errors.
+        });
     }
   });
 
@@ -105,18 +129,12 @@ if (app.isPackaged) {
   });
 }
 
-function sendStatus(status, info) {
-  if (mainWindow) {
-    mainWindow.webContents.send('update-status', { status, info });
-  }
-}
-
 // ---------------------------------------------------------------------------
-// IPC
+// IPC - Auto Update
 // ---------------------------------------------------------------------------
 
 ipcMain.handle('check-for-updates', async () => {
-  // Never check for updates in development.
+  // Never check for updates during development.
   if (!app.isPackaged) {
     return {
       ok: false,
@@ -127,7 +145,9 @@ ipcMain.handle('check-for-updates', async () => {
   try {
     await autoUpdater.checkForUpdates();
 
-    return { ok: true };
+    return {
+      ok: true
+    };
   } catch (err) {
     return {
       ok: false,
@@ -137,6 +157,7 @@ ipcMain.handle('check-for-updates', async () => {
 });
 
 ipcMain.handle('install-update', async () => {
+  // Never install updates from a development build.
   if (!app.isPackaged) {
     return {
       ok: false,
@@ -146,8 +167,14 @@ ipcMain.handle('install-update', async () => {
 
   autoUpdater.quitAndInstall();
 
-  return { ok: true };
+  return {
+    ok: true
+  };
 });
+
+// ---------------------------------------------------------------------------
+// IPC - Application information
+// ---------------------------------------------------------------------------
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
@@ -160,7 +187,7 @@ ipcMain.handle('get-app-version', () => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Check for updates ONLY in the packaged production application.
+  // Auto-update is ONLY executed by packaged production applications.
   if (app.isPackaged) {
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch(() => {
@@ -176,8 +203,13 @@ app.whenReady().then(() => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Close application
+// ---------------------------------------------------------------------------
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
+```
