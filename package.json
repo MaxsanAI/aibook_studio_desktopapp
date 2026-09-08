@@ -56,7 +56,7 @@
     "files": [
       "dist/**/*",
       "main.js",
-      "preload.js"
+      "preload.cjs"
     ],
     "publish": {
       "provider": "github",
