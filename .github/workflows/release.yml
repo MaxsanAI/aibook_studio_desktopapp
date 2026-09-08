@@ -1,3 +1,4 @@
+```yaml
 name: Release Desktop App
 
 on:
@@ -22,9 +23,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install
+
+      - name: Build Vite application
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build & package Windows app
         run: npx electron-builder --win --config.publish.provider=never
@@ -52,9 +63,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install
+
+      - name: Build Vite application
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build & package macOS app
         run: npx electron-builder --mac --config.publish.provider=never
@@ -83,14 +104,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install
+
+      - name: Build Vite application
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Build & package Linux app
         run: npx electron-builder --linux --config.publish.provider=never
@@ -112,6 +145,7 @@ jobs:
   publish-release:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -154,3 +188,4 @@ jobs:
             dist_electron/latest-linux.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
