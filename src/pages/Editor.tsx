@@ -14,7 +14,7 @@ import {
 import type { AIAction, Scene } from '@/types';
 
 export function Editor({ toastSuccess, toastError }: { toastSuccess: (m: string) => void; toastError: (m: string) => void }) {
-  const { currentBook, chapters, currentChapter, setCurrentChapter, saveChapter, saveBook, characters, locations, plotPoints, settings, saveGenerationHistory, updateSettings } = useApp();
+  const { currentBook, chapters, currentChapter, setCurrentChapter, saveChapter, saveBook, characters, locations, plotPoints, settings, saveGenerationHistory } = useApp();
   const editorRef = useRef<HTMLDivElement>(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
@@ -128,16 +128,12 @@ export function Editor({ toastSuccess, toastError }: { toastSuccess: (m: string)
       }
       await saveChapter({ ...currentChapter, content: result, status: 'written' });
 
-      // Deduct credits
-      const cost = Math.ceil(countWords(result) / 100) + 10;
-      updateSettings({ credits: Math.max(0, settings.credits - cost) });
-
       // Save to history
       saveGenerationHistory({
         id: nanoid(), bookId: currentBook.id, chapterId: currentChapter.id,
         action: 'generate-chapter', prompt: `Generate chapter ${currentChapter.number}`,
         result: result.slice(0, 500), tokensUsed: countWords(result) * 2,
-        creditsUsed: cost, status: 'success', createdAt: Date.now(),
+        creditsUsed: 0, status: 'success', createdAt: Date.now(),
       });
 
       toastSuccess('Chapter generated');
@@ -179,12 +175,10 @@ export function Editor({ toastSuccess, toastError }: { toastSuccess: (m: string)
 
       setAiResult(result);
 
-      const cost = Math.ceil(countWords(result) / 100) + 5;
-      updateSettings({ credits: Math.max(0, settings.credits - cost) });
       saveGenerationHistory({
         id: nanoid(), bookId: currentBook.id, chapterId: currentChapter.id,
         action, prompt: selected || 'continue', result: result.slice(0, 500),
-        tokensUsed: countWords(result) * 2, creditsUsed: cost, status: 'success', createdAt: Date.now(),
+        tokensUsed: countWords(result) * 2, creditsUsed: 0, status: 'success', createdAt: Date.now(),
       });
     } catch (err) {
       if ((err as Error).name !== 'AbortError') { setError((err as Error).message); }
@@ -416,7 +410,7 @@ export function Editor({ toastSuccess, toastError }: { toastSuccess: (m: string)
 
           {settings && (
             <div className="border-t border-surface-200 dark:border-surface-800 px-4 py-2 text-xs text-surface-400">
-              {settings.credits.toLocaleString()} credits remaining
+              {settings.aiSettings.provider} · {settings.aiSettings.model}
             </div>
           )}
         </aside>

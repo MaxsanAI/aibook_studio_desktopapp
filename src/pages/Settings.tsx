@@ -34,9 +34,9 @@ export function Settings({ toastSuccess, toastError }: { toastSuccess: (m: strin
     { id: 'openai', label: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
     { id: 'anthropic', label: 'Anthropic', models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'] },
     { id: 'gemini', label: 'Google Gemini', models: ['gemini-3.7-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'] },
+    { id: 'cloudflare', label: 'Cloudflare AI', models: ['@cf/meta/llama-3.1-8b-instruct', '@cf/meta/llama-3.1-70b-instruct', '@cf/meta/llama-3-8b-instruct', '@hf/thebloke/mistral-7b-instruct-v0.1-awq', '@cf/qwen/qwen1.5-14b-chat-awq'] },
     { id: 'openrouter', label: 'OpenRouter', models: ['auto', 'openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-3.7-flash'] },
   ];
-
   const currentProvider = providers.find((p) => p.id === local.aiSettings.provider)!;
 
   return (
@@ -75,7 +75,11 @@ export function Settings({ toastSuccess, toastError }: { toastSuccess: (m: strin
             <div>
               <label className="input-label">API Key</label>
               <input type="password" className="input" value={local.aiSettings.apiKey} onChange={(e) => updateAI({ apiKey: e.target.value })} placeholder="Enter your API key..." />
-              <p className="mt-1 text-xs text-surface-400">Your key is stored locally and never sent to our servers.</p>
+              {local.aiSettings.provider === 'cloudflare' ? (
+                <p className="mt-1 text-xs text-surface-400">Enter your Cloudflare Account ID and API Token as: <code className="text-accent-500">accountId:apiToken</code>. Free tier available — no credit card needed.</p>
+              ) : (
+                <p className="mt-1 text-xs text-surface-400">Your key is stored locally and never sent to our servers.</p>
+              )}
             </div>
             <div>
               <label className="input-label">Model</label>
@@ -174,10 +178,10 @@ export function Settings({ toastSuccess, toastError }: { toastSuccess: (m: strin
         <div className="card p-5 mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-surface-800 dark:text-surface-100">Credits Balance</h3>
-              <p className="text-sm text-surface-500 mt-1">Used for AI generation operations.</p>
+              <h3 className="font-medium text-surface-800 dark:text-surface-100">AI Usage</h3>
+              <p className="text-sm text-surface-500 mt-1">You use your own API key — usage is billed directly by your AI provider.</p>
             </div>
-            <span className="font-display text-2xl font-semibold text-accent-600 dark:text-accent-400">{local.credits.toLocaleString()}</span>
+            <span className="font-display text-2xl font-semibold text-accent-600 dark:text-accent-400">Unlimited</span>
           </div>
         </div>
 

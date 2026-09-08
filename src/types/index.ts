@@ -272,7 +272,7 @@ export interface ChapterVersion {
 // AI Settings & Generation
 // ---------------------------------------------------------------------------
 
-export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'cloudflare';
 
 export interface AISettings {
   provider: AIProvider;

@@ -126,9 +126,9 @@ export function TopBar({ page, onNavigate }: {
 
         {settings && (
           <div className="flex items-center gap-1.5 rounded-lg bg-surface-100 dark:bg-surface-800 px-2.5 py-1.5 text-xs">
-            <span className="text-surface-500 dark:text-surface-400">Credits</span>
-            <span className="font-semibold text-surface-700 dark:text-surface-200">
-              {settings.credits.toLocaleString()}
+            <span className="text-surface-500 dark:text-surface-400">AI</span>
+            <span className="font-semibold text-surface-700 dark:text-surface-200 capitalize">
+              {settings.aiSettings.provider}
             </span>
           </div>
         )}

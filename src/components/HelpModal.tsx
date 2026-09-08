@@ -25,7 +25,7 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
             AI Setup
           </h3>
           <p className="mt-2 text-sm text-surface-600 dark:text-surface-400">
-            To use AI features, go to Settings → AI and enter your API key. You can use OpenAI, Anthropic, Google Gemini, or OpenRouter. Each AI action uses credits (tokens).
+            To use AI features, go to Settings → AI and enter your API key. You can use OpenAI, Anthropic, Google Gemini, OpenRouter, or Cloudflare AI (free tier). Since you use your own API key, there are no credit limits — usage is billed directly by your provider.
           </p>
         </div>
 

@@ -1,7 +1,7 @@
 import type { AISettings, AIProvider } from '@/types';
 
 // ---------------------------------------------------------------------------
-// AI Provider Abstraction — supports OpenAI, Anthropic, Gemini, OpenRouter
+// AI Provider Abstraction — supports OpenAI, Anthropic, Gemini, OpenRouter, Cloudflare
 // ---------------------------------------------------------------------------
 
 export interface AIMessage {
@@ -226,6 +226,96 @@ const geminiAdapter: AIProviderAdapter = {
 };
 
 // ---------------------------------------------------------------------------
+// Cloudflare Workers AI Adapter — free tier, uses OpenAI-compatible endpoint
+// The apiKey field stores the Cloudflare API token.
+// The accountId is stored in the model field prefix (accountId/model) or
+// user can set just the model and we use the Workers AI gateway URL.
+// ---------------------------------------------------------------------------
+
+const cloudflareAdapter: AIProviderAdapter = {
+  name: 'Cloudflare AI (Free)',
+  models: [
+    '@cf/meta/llama-3.1-8b-instruct',
+    '@cf/meta/llama-3.1-70b-instruct',
+    '@cf/meta/llama-3-8b-instruct',
+    '@hf/thebloke/mistral-7b-instruct-v0.1-awq',
+    '@cf/qwen/qwen1.5-14b-chat-awq',
+  ],
+  async generate(request: AIRequest, settings: AISettings): Promise<AIResponse> {
+    const { messages, temperature = settings.temperature, maxTokens = settings.maxTokens, stream, signal, onToken } = request;
+
+    // The apiKey holds "accountId:apiToken" — user enters both separated by colon
+    const [accountId, apiToken] = settings.apiKey.includes(':')
+      ? settings.apiKey.split(':', 2)
+      : ['', settings.apiKey];
+
+    if (!accountId || !apiToken) {
+      throw new Error('Cloudflare AI requires your Account ID and API Token. Enter them as "accountId:apiToken" in the API Key field.');
+    }
+
+    const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        messages,
+        temperature,
+        max_tokens: maxTokens,
+        stream: stream ?? false,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Cloudflare AI error (${response.status}): ${errText}`);
+    }
+
+    if (stream && onToken && response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const data = trimmed.slice(6);
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const token = parsed.choices?.[0]?.delta?.content || '';
+            if (token) {
+              fullContent += token;
+              onToken(token);
+            }
+          } catch {
+            // skip malformed chunks
+          }
+        }
+      }
+      return { content: fullContent, tokensUsed: estimateTokens(fullContent) };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    return { content, tokensUsed: data.usage?.total_tokens || estimateTokens(content) };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Provider registry
 // ---------------------------------------------------------------------------
 
@@ -234,6 +324,7 @@ const providers: Record<AIProvider, AIProviderAdapter> = {
   openrouter: createOpenAIAdapter('https://openrouter.ai/api/v1', 'OpenRouter', ['openai/gpt-4o', 'anthropic/claude-3.5-sonnet', 'google/gemini-3.7-flash']),
   anthropic: anthropicAdapter,
   gemini: geminiAdapter,
+  cloudflare: cloudflareAdapter,
 };
 
 export function getProvider(name: AIProvider): AIProviderAdapter {

@@ -25,9 +25,8 @@ export function License({ toastSuccess, toastError }: { toastSuccess: (m: string
         licenseKey: key.trim(),
         licenseStatus: 'active',
         licenseActivatedAt: Date.now(),
-        credits: settings.credits + 1000,
       });
-      toastSuccess('License activated! 1000 credits added.');
+      toastSuccess('License activated! All features unlocked.');
       setKey('');
     } catch (err) {
       setError((err as Error).message);
@@ -53,7 +52,7 @@ export function License({ toastSuccess, toastError }: { toastSuccess: (m: string
       <div className="mx-auto max-w-lg px-8 py-8">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-semibold text-surface-800 dark:text-surface-100">License</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400">Activate your license to unlock credits and features.</p>
+          <p className="text-sm text-surface-500 dark:text-surface-400">Activate your license to unlock all features.</p>
         </div>
 
         {error && <div className="mb-4"><ErrorBanner message={error} onDismiss={() => setError('')} /></div>}
@@ -69,7 +68,7 @@ export function License({ toastSuccess, toastError }: { toastSuccess: (m: string
                 {isActive ? 'License Active' : 'Unlicensed'}
               </h3>
               <p className="text-sm text-surface-500 mt-0.5">
-                {isActive ? 'All features unlocked.' : 'Activate to unlock AI generation credits.'}
+                {isActive ? 'All features unlocked.' : 'Activate to unlock all features.'}
               </p>
             </div>
           </div>
@@ -104,16 +103,16 @@ export function License({ toastSuccess, toastError }: { toastSuccess: (m: string
           </div>
         )}
 
-        {/* Credits info */}
+        {/* AI Usage info */}
         <div className="mt-6 card p-5">
           <div className="flex items-center gap-3">
             <Zap size={20} className="text-accent-500" />
             <div>
-              <p className="text-sm font-medium text-surface-800 dark:text-surface-100">Credits Balance</p>
-              <p className="font-display text-xl font-semibold text-accent-600 dark:text-accent-400">{settings.credits.toLocaleString()}</p>
+              <p className="text-sm font-medium text-surface-800 dark:text-surface-100">AI Usage</p>
+              <p className="font-display text-xl font-semibold text-accent-600 dark:text-accent-400">Unlimited</p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-surface-400">Credits are consumed by AI generation operations (chapter generation, rewriting, etc.). Activating a license adds 1000 credits.</p>
+          <p className="mt-3 text-xs text-surface-400">You use your own API key — usage is billed directly by your AI provider (OpenAI, Anthropic, Google, OpenRouter, or Cloudflare AI free tier).</p>
         </div>
       </div>
     </div>

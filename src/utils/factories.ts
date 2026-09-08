@@ -237,7 +237,7 @@ export function createDefaultSettings(): AppSettings {
       maxTokens: 4000,
       streamingEnabled: true,
     },
-    credits: 10000,
+    credits: -1,
     licenseKey: '',
     licenseStatus: 'unlicensed',
     licenseActivatedAt: null,
