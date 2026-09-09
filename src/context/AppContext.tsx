@@ -61,13 +61,18 @@ interface AppState {
 
   // Loading state
   loading: boolean;
+  initError: string | null;
 }
 
 const AppContext = createContext<AppState | null>(null);
 
 export function useApp(): AppState {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used within AppProvider');
+
+  if (!ctx) {
+    throw new Error('useApp must be used within AppProvider');
+  }
+
   return ctx;
 }
 
@@ -84,44 +89,90 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [generationHistory, setGenerationHistory] = useState<GenerationHistoryEntry[]>([]);
   const [continuityIssues, setContinuityIssues] = useState<ContinuityIssue[]>([]);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  // --- Settings ---
+  // IMPORTANT:
+  // Never leave the application stuck on loading if IndexedDB or another
+  // initialization step fails.
+  const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Settings
+  // -------------------------------------------------------------------------
+
   const loadSettings = useCallback(async () => {
     const existing = await settingsRepo.getById('app-settings');
+
     if (existing) {
       setSettings(existing);
-    } else {
-      const defaults = createDefaultSettings();
-      await settingsRepo.save({ ...defaults, id: 'app-settings' });
-      setSettings(defaults);
+      return;
     }
+
+    const defaults = createDefaultSettings();
+
+    await settingsRepo.save({
+      ...defaults,
+      id: 'app-settings',
+    });
+
+    setSettings(defaults);
   }, []);
 
   const updateSettings = useCallback(async (partial: Partial<AppSettings>) => {
-    setSettings((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, ...partial };
-      settingsRepo.save({ ...updated, id: 'app-settings' });
-      return updated;
-    });
-  }, []);
+    const currentSettings = settings;
 
-  // --- Books ---
+    if (!currentSettings) {
+      return;
+    }
+
+    const updated = {
+      ...currentSettings,
+      ...partial,
+    };
+
+    await settingsRepo.save({
+      ...updated,
+      id: 'app-settings',
+    });
+
+    setSettings(updated);
+  }, [settings]);
+
+  // -------------------------------------------------------------------------
+  // Books
+  // -------------------------------------------------------------------------
+
   const loadBooks = useCallback(async () => {
     const allBooks = await booksRepo.getAll();
+
     allBooks.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+
     setBooks(allBooks);
   }, []);
 
   const openBook = useCallback(async (bookId: string) => {
     const book = await booksRepo.getById(bookId);
-    if (!book) return;
+
+    if (!book) {
+      return;
+    }
+
     book.lastOpenedAt = Date.now();
+
     await booksRepo.save(book);
+
     setCurrentBook(book);
 
-    const [chars, locs, plots, chaps, scns, nts, hist, issues] = await Promise.all([
+    const [
+      chars,
+      locs,
+      plots,
+      chaps,
+      scns,
+      nts,
+      hist,
+      issues,
+    ] = await Promise.all([
       getCharactersByBook(bookId),
       getLocationsByBook(bookId),
       getPlotPointsByBook(bookId),
@@ -131,6 +182,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getGenerationHistoryByBook(bookId),
       getContinuityIssuesByBook(bookId),
     ]);
+
     setCharacters(chars);
     setLocations(locs);
     setPlotPoints(plots);
@@ -143,7 +195,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Set current chapter
     if (book.currentChapterId) {
       const ch = chaps.find((c) => c.id === book.currentChapterId);
-      if (ch) setCurrentChapter(ch);
+
+      if (ch) {
+        setCurrentChapter(ch);
+      } else {
+        setCurrentChapter(null);
+      }
     } else if (chaps.length > 0) {
       setCurrentChapter(chaps[0]);
     } else {
@@ -155,22 +212,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const saveBook = useCallback(async (book: Book) => {
     book.updatedAt = Date.now();
+
     await booksRepo.save(book);
+
     setCurrentBook(book);
+
     setBooks((prev) => {
       const idx = prev.findIndex((b) => b.id === book.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = book;
         return updated;
       }
+
       return [book, ...prev];
     });
   }, []);
 
   const deleteBook = useCallback(async (bookId: string) => {
     await deleteBookCascade(bookId);
+
     setBooks((prev) => prev.filter((b) => b.id !== bookId));
+
     if (currentBook?.id === bookId) {
       setCurrentBook(null);
       setCharacters([]);
@@ -199,8 +263,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshBookData = useCallback(async () => {
-    if (!currentBook) return;
-    const [chars, locs, plots, chaps, scns, nts, hist, issues] = await Promise.all([
+    if (!currentBook) {
+      return;
+    }
+
+    const [
+      chars,
+      locs,
+      plots,
+      chaps,
+      scns,
+      nts,
+      hist,
+      issues,
+    ] = await Promise.all([
       getCharactersByBook(currentBook.id),
       getLocationsByBook(currentBook.id),
       getPlotPointsByBook(currentBook.id),
@@ -210,6 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getGenerationHistoryByBook(currentBook.id),
       getContinuityIssuesByBook(currentBook.id),
     ]);
+
     setCharacters(chars);
     setLocations(locs);
     setPlotPoints(plots);
@@ -220,176 +297,343 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setContinuityIssues(issues);
   }, [currentBook]);
 
-  // --- Chapter ---
+  // -------------------------------------------------------------------------
+  // Chapter
+  // -------------------------------------------------------------------------
+
   const saveChapter = useCallback(async (chapter: Chapter) => {
     chapter.updatedAt = Date.now();
+
     await chaptersRepo.save(chapter);
+
     setChapters((prev) => {
       const idx = prev.findIndex((c) => c.id === chapter.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = chapter;
         return updated;
       }
+
       return [...prev, chapter];
     });
+
     if (currentChapter?.id === chapter.id) {
       setCurrentChapter(chapter);
     }
   }, [currentChapter]);
 
-  // --- Characters ---
+  // -------------------------------------------------------------------------
+  // Characters
+  // -------------------------------------------------------------------------
+
   const saveCharacter = useCallback(async (char: Character) => {
     char.updatedAt = Date.now();
+
     await charactersRepo.save(char);
+
     setCharacters((prev) => {
       const idx = prev.findIndex((c) => c.id === char.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = char;
         return updated;
       }
+
       return [...prev, char];
     });
   }, []);
 
   const deleteCharacter = useCallback(async (id: string) => {
     await charactersRepo.delete(id);
+
     setCharacters((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
-  // --- Locations ---
+  // -------------------------------------------------------------------------
+  // Locations
+  // -------------------------------------------------------------------------
+
   const saveLocation = useCallback(async (loc: Location) => {
     loc.updatedAt = Date.now();
+
     await locationsRepo.save(loc);
+
     setLocations((prev) => {
       const idx = prev.findIndex((l) => l.id === loc.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = loc;
         return updated;
       }
+
       return [...prev, loc];
     });
   }, []);
 
   const deleteLocation = useCallback(async (id: string) => {
     await locationsRepo.delete(id);
+
     setLocations((prev) => prev.filter((l) => l.id !== id));
   }, []);
 
-  // --- Plot Points ---
+  // -------------------------------------------------------------------------
+  // Plot Points
+  // -------------------------------------------------------------------------
+
   const savePlotPoint = useCallback(async (pp: PlotPoint) => {
     pp.updatedAt = Date.now();
+
     await plotPointsRepo.save(pp);
+
     setPlotPoints((prev) => {
       const idx = prev.findIndex((p) => p.id === pp.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = pp;
         return updated;
       }
+
       return [...prev, pp];
     });
   }, []);
 
   const deletePlotPoint = useCallback(async (id: string) => {
     await plotPointsRepo.delete(id);
+
     setPlotPoints((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  // --- Scenes ---
+  // -------------------------------------------------------------------------
+  // Scenes
+  // -------------------------------------------------------------------------
+
   const saveScene = useCallback(async (scene: Scene) => {
     scene.updatedAt = Date.now();
+
     await scenesRepo.save(scene);
+
     setScenes((prev) => {
       const idx = prev.findIndex((s) => s.id === scene.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = scene;
         return updated;
       }
+
       return [...prev, scene];
     });
   }, []);
 
   const deleteScene = useCallback(async (id: string) => {
     await scenesRepo.delete(id);
+
     setScenes((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  // --- Notes ---
+  // -------------------------------------------------------------------------
+  // Notes
+  // -------------------------------------------------------------------------
+
   const saveNote = useCallback(async (note: Note) => {
     note.updatedAt = Date.now();
+
     await notesRepo.save(note);
+
     setNotes((prev) => {
       const idx = prev.findIndex((n) => n.id === note.id);
+
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = note;
         return updated;
       }
+
       return [...prev, note];
     });
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
     await notesRepo.delete(id);
+
     setNotes((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  // --- Generation History ---
-  const saveGenerationHistory = useCallback(async (entry: GenerationHistoryEntry) => {
+  // -------------------------------------------------------------------------
+  // Generation History
+  // -------------------------------------------------------------------------
+
+  const saveGenerationHistory = useCallback(async (
+    entry: GenerationHistoryEntry,
+  ) => {
     await generationHistoryRepo.save(entry);
+
     setGenerationHistory((prev) => [entry, ...prev]);
   }, []);
 
-  // --- Continuity Issues ---
-  const saveContinuityIssues = useCallback(async (issues: ContinuityIssue[]) => {
+  // -------------------------------------------------------------------------
+  // Continuity Issues
+  // -------------------------------------------------------------------------
+
+  const saveContinuityIssues = useCallback(async (
+    issues: ContinuityIssue[],
+  ) => {
     // Delete old issues for this book and save new ones
-    const oldIssues = await getContinuityIssuesByBook(currentBook?.id || '');
-    await Promise.all(oldIssues.map((i) => continuityIssuesRepo.delete(i.id)));
-    await Promise.all(issues.map((i) => continuityIssuesRepo.save(i)));
+    const oldIssues = await getContinuityIssuesByBook(
+      currentBook?.id || '',
+    );
+
+    await Promise.all(
+      oldIssues.map((i) => continuityIssuesRepo.delete(i.id)),
+    );
+
+    await Promise.all(
+      issues.map((i) => continuityIssuesRepo.save(i)),
+    );
+
     setContinuityIssues(issues);
   }, [currentBook]);
 
-  // --- Initial load ---
+  // -------------------------------------------------------------------------
+  // Initial load
+  //
+  // IMPORTANT:
+  // The old implementation could leave loading=true forever if IndexedDB
+  // failed. This implementation ALWAYS reaches finally and ends loading.
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
-    (async () => {
-      await loadSettings();
-      await loadBooks();
-      setLoading(false);
-    })();
+    let cancelled = false;
+
+    const initializeApp = async () => {
+      try {
+        setInitError(null);
+
+        console.log('[AI Write Book] Initializing application...');
+
+        await loadSettings();
+        await loadBooks();
+
+        console.log('[AI Write Book] Application initialized successfully.');
+      } catch (error) {
+        console.error('[AI Write Book] Startup failed:', error);
+
+        if (!cancelled) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : String(error);
+
+          setInitError(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeApp();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadSettings, loadBooks]);
 
-  // --- Apply theme ---
+  // -------------------------------------------------------------------------
+  // Apply theme
+  // -------------------------------------------------------------------------
+
   useEffect(() => {
-    if (!settings) return;
+    if (!settings) {
+      return;
+    }
+
     const apply = (dark: boolean) => {
       document.documentElement.classList.toggle('dark', dark);
     };
-    if (settings.theme === 'dark') apply(true);
-    else if (settings.theme === 'light') apply(false);
-    else {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    if (settings.theme === 'dark') {
+      apply(true);
+    } else if (settings.theme === 'light') {
+      apply(false);
+    } else {
+      const mq = window.matchMedia(
+        '(prefers-color-scheme: dark)',
+      );
+
       apply(mq.matches);
-      const handler = (e: MediaQueryListEvent) => apply(e.matches);
+
+      const handler = (e: MediaQueryListEvent) => {
+        apply(e.matches);
+      };
+
       mq.addEventListener('change', handler);
-      return () => mq.removeEventListener('change', handler);
+
+      return () => {
+        mq.removeEventListener('change', handler);
+      };
     }
   }, [settings]);
 
+  // -------------------------------------------------------------------------
+  // Context value
+  // -------------------------------------------------------------------------
+
   const value: AppState = {
-    settings, loadSettings, updateSettings,
-    books, currentBook, loadBooks, openBook, saveBook, deleteBook, closeBook,
-    characters, locations, plotPoints, chapters, scenes, notes,
-    generationHistory, continuityIssues,
-    currentChapter, setCurrentChapter, saveChapter, refreshBookData,
-    saveCharacter, saveLocation, savePlotPoint, saveScene, saveNote,
-    deleteCharacter, deleteLocation, deletePlotPoint, deleteScene, deleteNote,
-    saveGenerationHistory, saveContinuityIssues,
+    settings,
+    loadSettings,
+    updateSettings,
+
+    books,
+    currentBook,
+    loadBooks,
+    openBook,
+    saveBook,
+    deleteBook,
+    closeBook,
+
+    characters,
+    locations,
+    plotPoints,
+    chapters,
+    scenes,
+    notes,
+    generationHistory,
+    continuityIssues,
+
+    currentChapter,
+    setCurrentChapter,
+    saveChapter,
+    refreshBookData,
+
+    saveCharacter,
+    saveLocation,
+    savePlotPoint,
+    saveScene,
+    saveNote,
+
+    deleteCharacter,
+    deleteLocation,
+    deletePlotPoint,
+    deleteScene,
+    deleteNote,
+
+    saveGenerationHistory,
+    saveContinuityIssues,
+
     loading,
+    initError,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  );
 }
+
